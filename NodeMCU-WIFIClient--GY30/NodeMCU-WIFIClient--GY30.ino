@@ -1,10 +1,13 @@
 #include <ESP8266WiFi.h>
 #include <Wire.h>
 #include "config.h"
+#include "SparkFunHTU21D.h"
 
-int ledPin = 3; // GPIO0
 int sdaPin = 4;
 int sclPin = 5;
+
+int ledGreenPin = 14;
+int ledRedPin = 12;
 
 char host[] = "api.thethings.io";
 int httpPort = 80;
@@ -12,21 +15,30 @@ int httpPort = 80;
 int BH1750_address = 0x23; // i2c Addresse
 byte buff[2];
 
+//Create an instance of the object
+HTU21D myHumidity;
  
 void setup() {
 
   Serial.begin(115200);
   delay(10);
 
+  Serial.print("Starting I2C");
+
   // I2C SDA 4, SCL 5
   Wire.begin(sdaPin,sclPin);
+
+  Serial.print("Starting GY-30");
 
   // GY-30 Modul initialisieren
   BH1750_Init(BH1750_address);
 
-  // On-Board-LED
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
+  Serial.print("Starting HTU21D");
+
+  // HTU21D init
+  myHumidity.begin();
+
+  configLeds();
  
   // Connect to WiFi network
   Serial.println();
@@ -38,9 +50,15 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+
+    redOn();
   }
+  
   Serial.println("");
   Serial.println("WiFi connected");
+
+  redOff();
+  greenOn();
  
   // Print the IP address
   Serial.print("Use this URL to connect: ");
@@ -51,6 +69,20 @@ void setup() {
 }
  
 void loop() {
+
+  float humd = myHumidity.readHumidity();
+  float temp = myHumidity.readTemperature();
+
+  Serial.print("Time:");
+  Serial.print(millis());
+  Serial.print(" Temperature:");
+  Serial.print(temp, 1);
+  Serial.print("C");
+  Serial.print(" Humidity:");
+  Serial.print(humd, 1);
+  Serial.print("%");
+
+  Serial.println();
   
   float lx = BH1750_ReadLX(BH1750_address);
   if(lx < 0) {
@@ -101,7 +133,7 @@ void loop() {
   Serial.println("closing connection");
 
 
-  delay(5000);
+  delay(60000);
 }
 
 void BH1750_Init(int address){
@@ -134,4 +166,36 @@ float BH1750_ReadLX(int address)
 
   return 0;
 }
- 
+
+void configLeds()
+{
+  Serial.print("Starting LEDs");
+
+  pinMode(ledGreenPin, OUTPUT);
+  greenOff();
+
+  pinMode(ledRedPin, OUTPUT);
+  redOff();
+}
+
+void redOn()
+{
+  digitalWrite(ledRedPin, HIGH);
+}
+
+void redOff()
+{
+  digitalWrite(ledRedPin, LOW);
+}
+
+void greenOn()
+{
+  digitalWrite(ledGreenPin, HIGH);
+}
+
+void greenOff()
+{
+  digitalWrite(ledGreenPin, LOW);
+}
+
+
