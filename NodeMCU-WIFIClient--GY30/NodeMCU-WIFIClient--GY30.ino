@@ -23,17 +23,17 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  Serial.print("Starting I2C");
+  Serial.println("Starting I2C");
 
   // I2C SDA 4, SCL 5
   Wire.begin(sdaPin,sclPin);
 
-  Serial.print("Starting GY-30");
+  Serial.println("Starting GY-30");
 
   // GY-30 Modul initialisieren
   BH1750_Init(BH1750_address);
 
-  Serial.print("Starting HTU21D");
+  Serial.println("Starting HTU21D");
 
   // HTU21D init
   myHumidity.begin();
@@ -109,7 +109,10 @@ void loop() {
   
   String lxString = str;
   String uri = "/v2/things/" + apiKey;
-  String data = "{ \"values\": [ { \"key\": \"lxval\", \"value\": " + lxString + " } ] }";
+  String data = "{ \"values\": [ { \"key\": \"lxval\", \"value\": " + lxString + " },"
+    + "{ \"key\": \"humval\", \"value\": " + humd + " },"
+    + "{ \"key\": \"tempval\", \"value\": " + temp + " }"
+    + " ] }";
 
   String postRequest = 
     "POST " + uri + " HTTP/1.0\r\n" +
@@ -169,7 +172,7 @@ float BH1750_ReadLX(int address)
 
 void configLeds()
 {
-  Serial.print("Starting LEDs");
+  Serial.println("Starting LEDs");
 
   pinMode(ledGreenPin, OUTPUT);
   greenOff();
