@@ -9,9 +9,6 @@ int sclPin = 5;
 int ledGreenPin = 14;
 int ledRedPin = 12;
 
-char host[] = "api.thethings.io";
-int httpPort = 80;
-
 int BH1750_address = 0x23; // i2c Addresse GND
 //int BH1750_address = 0x5c; // i2c Addresse 3V3
 
@@ -106,7 +103,7 @@ void loop() {
 
   // Use WiFiClient class to create TCP connections
   WiFiClient client;
-  const int httpPort = 80;
+  
   if (!client.connect(host, httpPort)) {
     Serial.println("connection failed");
     return;
@@ -116,19 +113,20 @@ void loop() {
   sprintf(str, "%d", (int)lx);
   
   String lxString = str;
-  String uri = "/v2/things/" + apiKey;
-  String data = "{ \"values\": [ { \"key\": \"lxval\", \"value\": " + lxString + " },"
-    + "{ \"key\": \"humval\", \"value\": " + humd + " },"
-    + "{ \"key\": \"tempval\", \"value\": " + temp + " }"
-    + " ] }";
-
+  String uri = "/write?db=" + db;
+  
+  String data =   "lx,host=" + sensorHostname + " value=" + lxString + "\n"
+                + "hum,host=" + sensorHostname + " value=" + humd + "\n"
+                + "temp,host=" + sensorHostname + " value=" + temp;
+  
   String postRequest = 
     "POST " + uri + " HTTP/1.0\r\n" +
-    "Host: " + host + "\r\n" +
-    "Accept: application/json\r\n" +
+    "Host: " + host + ":" + httpPort + "\r\n" +
     "Content-Length: " + data.length() + "\r\n" +
-    "Content-Type: application/json\r\n" +
-    "\r\n" + data;
+    "Cache-Control: no-cache\r\n" +
+    "Content-Type: application/x-www-form-urlencoded\r\n" +
+    "\r\n" + 
+    data;
 
   client.print(postRequest);
                
@@ -145,11 +143,7 @@ void loop() {
 
   greenOff();
 
-  // 5 Sek. for test
-  delay(5000);
-
-  // 5 Minutes for production
-  // delay(1000 * 60 * 5);
+  delay(delayMillis);
 }
 
 void BH1750_Init(int address){
