@@ -23,7 +23,12 @@
 //http://playground.arduino.cc/uploads/Code/LED.zip
 #include <LED.h>
 
-Button button = Button(D6,PULLUP); //initialize the button (wire between pin 12 and ground)
+int MOISTURE_DIGITAL_IN = D5;
+int MOISTURE_ANALOG_INPUT = A0;
+int BUTTON_INPUT = D6;
+int PUMP_OUTPUT = D7;
+
+Button button = Button(BUTTON_INPUT,PULLUP); //initialize the button (wire between pin 12 and ground)
 
 //utility functions
 LED led = LED(D4);                 //initialize the LED
@@ -35,7 +40,8 @@ State Metering = State(metering, meteringUpdate, NULL);
 State Watering = State(watering, wateringUpdate, wateringExit);
 State Sleeping = State(sleeping, sleepingUpdate, NULL);
 
-FSM stateMachine = FSM(Metering);     //initialize state machine, start in state: On
+//initialize state machine
+FSM stateMachine = FSM(Sleeping);
 
 int wateringEndMillis = 0;
 int sleepingEndMillis = 0;
@@ -43,7 +49,7 @@ int sleepingEndMillis = 0;
 void watering()
 {
   Serial.println("Watering, starting pump, setting time to 10 seconds");
-  ledOn();
+  pumpOn();
   wateringEndMillis = millis() + 10 * 1000;
 }
 
@@ -58,7 +64,7 @@ void wateringUpdate()
 void wateringExit()
 {
   Serial.println("Watering exit, stopping pump");
-  ledOff();
+  pumpOff();
   wateringEndMillis = 0;
 }
 
@@ -83,41 +89,64 @@ void metering()
 
 void meteringUpdate()
 {
-  if (button.uniquePress())
+  if (button.uniquePress() || digitalRead(MOISTURE_DIGITAL_IN) == HIGH)
   {
     stateMachine.transitionTo(Watering);
   }
 }
 
 //end utility functions
- 
+
+void pumpOn()
+{
+  digitalWrite(PUMP_OUTPUT, HIGH);
+}
+
+void pumpOff()
+{
+  digitalWrite(PUMP_OUTPUT, LOW);
+}
+
+
 void setup()
 {
   Serial.begin(9600);
   Serial.setTimeout(200);
+
+  // analog input moisture
+  pinMode(MOISTURE_ANALOG_INPUT, INPUT);
+  // digital input moisture
+  pinMode(MOISTURE_DIGITAL_IN, PULLDOWN);
   
-  pinMode(A0, INPUT);
-  pinMode(D5, PULLDOWN);
+  // digital output pump
+  pinMode(PUMP_OUTPUT, OUTPUT);
+  digitalWrite(PUMP_OUTPUT, LOW);
 
   delay(200);
 
   Serial.println("Soil moisture sensor");
 }
 
-int currentA0 = 0;
-int oldA0 = 0;
- 
 void loop()
 {
-
-/*
-    stateMachine.transitionTo(Watering);
-    stateMachine.transitionTo(Sleeping);
-
-    currentA0 = analogRead( A0 );
-    Serial.print("A=");
-    Serial.println(currentA0);
-*/
   stateMachine.update();
   delay(10);
+  meterAnalog();
 }
+
+
+int nextMeasurement = 0;
+void meterAnalog()
+{
+  int nowMillis = millis();
+  if (nowMillis > nextMeasurement)
+  {
+    int currentA0 = analogRead( MOISTURE_ANALOG_INPUT );
+    Serial.print("A=");
+    Serial.println(currentA0);
+
+    // next in 30 secs
+    nextMeasurement = nowMillis + 30 * 1000;
+  }
+}
+
