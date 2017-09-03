@@ -1,12 +1,18 @@
 /**
  * Automatic plant watering.
  * 
- * 1. periodically reading a soil moisture sensor
- * 2. 
+ * States
+ * metering -> watering (10sec) -> sleep (20 sec) -> metering
  * 
+ * 1. State "metering": periodically reading a soil moisture sensor (A0)
+ * 2. transfer analog value to server
+ * 3. check threshold, transition to State "watering" for 10 seconds
+ * 4. switch pumps off, transition to "sleep state" for 10 seconds
+ * 5. transition to "metering state"
  * 
- * 
- * 
+ * TBD
+ * - Switch motor instead of LED.
+ * - connect to Gateway for sending analog value
  */
 //http://playground.arduino.cc/uploads/Code/FSM.zip
 #include <FiniteStateMachine.h>
@@ -17,27 +23,73 @@
 //http://playground.arduino.cc/uploads/Code/LED.zip
 #include <LED.h>
 
-const byte NUMBER_OF_STATES = 4; //how many states are we cycling through?
+Button button = Button(D6,PULLUP); //initialize the button (wire between pin 12 and ground)
 
 //utility functions
 LED led = LED(D4);                 //initialize the LED
 void ledOn(){ led.on(); }
 void ledOff(){ led.off(); }
-void ledFadeIn(){ led.fadeIn(500); }
-void ledFadeOut(){ led.fadeOut(500); }
-//end utility functions
- 
-//initialize states
-State On = State(ledOn);
-State Off = State(ledOff);
-State FadeIn = State(ledFadeIn);
-State FadeOut = State(ledFadeOut);
- 
-FSM ledStateMachine = FSM(On);     //initialize state machine, start in state: On
- 
-Button button = Button(D6,PULLUP); //initialize the button (wire between pin 12 and ground)
 
-byte buttonPresses = 0;            //counter variable, holds number of button presses
+//initialize states
+State Metering = State(metering, meteringUpdate, NULL);
+State Watering = State(watering, wateringUpdate, wateringExit);
+State Sleeping = State(sleeping, sleepingUpdate, NULL);
+
+FSM stateMachine = FSM(Metering);     //initialize state machine, start in state: On
+
+int wateringEndMillis = 0;
+int sleepingEndMillis = 0;
+
+void watering()
+{
+  Serial.println("Watering, starting pump, setting time to 10 seconds");
+  ledOn();
+  wateringEndMillis = millis() + 10 * 1000;
+}
+
+void wateringUpdate()
+{
+  if (millis() > wateringEndMillis)
+  {
+    stateMachine.transitionTo(Sleeping);
+  }
+}
+
+void wateringExit()
+{
+  Serial.println("Watering exit, stopping pump");
+  ledOff();
+  wateringEndMillis = 0;
+}
+
+void sleeping()
+{
+  Serial.println("Sleeping");
+  sleepingEndMillis = millis() + 10 * 1000;
+}
+
+void sleepingUpdate()
+{
+  if (millis() > sleepingEndMillis)
+  {
+    stateMachine.transitionTo(Metering);
+  }
+}
+
+void metering()
+{
+  Serial.println("Metering");
+}
+
+void meteringUpdate()
+{
+  if (button.uniquePress())
+  {
+    stateMachine.transitionTo(Watering);
+  }
+}
+
+//end utility functions
  
 void setup()
 {
@@ -45,6 +97,7 @@ void setup()
   Serial.setTimeout(200);
   
   pinMode(A0, INPUT);
+  pinMode(D5, PULLDOWN);
 
   delay(200);
 
@@ -56,22 +109,15 @@ int oldA0 = 0;
  
 void loop()
 {
-  if (button.uniquePress())
-  {
-    Serial.println("Button press");
-    
-    //increment buttonPresses and constrain it to [ 0, 1, 2, 3 ]
-    buttonPresses = ++buttonPresses % NUMBER_OF_STATES;
-    switch (buttonPresses){
-      case 0: ledStateMachine.transitionTo(On); break;
-      case 1: ledStateMachine.transitionTo(Off); break;
-      case 2: ledStateMachine.transitionTo(On); break;
-      case 3: ledStateMachine.transitionTo(Off); break;
-    }
+
+/*
+    stateMachine.transitionTo(Watering);
+    stateMachine.transitionTo(Sleeping);
 
     currentA0 = analogRead( A0 );
     Serial.print("A=");
     Serial.println(currentA0);
-  }
-  ledStateMachine.update();
+*/
+  stateMachine.update();
+  delay(10);
 }
