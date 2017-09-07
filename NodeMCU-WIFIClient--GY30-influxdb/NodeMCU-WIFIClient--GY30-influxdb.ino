@@ -19,8 +19,8 @@ HTU21D myHumidity;
  
 void setup() {
 
-  Serial.begin(115200);
-  delay(10);
+  Serial.begin(9600);
+  delay(200);
 
   Serial.println("Starting I2C");
 
@@ -44,6 +44,7 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   redOn();
  
