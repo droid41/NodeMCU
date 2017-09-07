@@ -125,18 +125,20 @@ void setup()
   delay(200);
 
   Serial.println("Soil moisture sensor");
+
+  connect();
 }
 
 void loop()
 {
   stateMachine.update();
   delay(10);
-  meterAnalog();
+  meterAnalogAndWrite();
 }
 
 
 int nextMeasurement = 0;
-void meterAnalog()
+void meterAnalogAndWrite()
 {
   int nowMillis = millis();
   if (nowMillis > nextMeasurement)
@@ -145,8 +147,10 @@ void meterAnalog()
     Serial.print("A=");
     Serial.println(currentA0);
 
-    // next in 30 secs
-    nextMeasurement = nowMillis + 30 * 1000;
+    write(currentA0);
+
+    // next in 60 secs
+    nextMeasurement = nowMillis + 60 * 1000;
   }
 }
 
