@@ -3,18 +3,16 @@
 #include "config.h"
 #include "SparkFunHTU21D.h"
 
+//https://github.com/claws/BH1750
+#include <BH1750.h>
+
 int sdaPin = 4;
 int sclPin = 5;
 
 int ledGreenPin = 14;
 int ledRedPin = 12;
 
-int BH1750_address = 0x23; // i2c Addresse GND
-//int BH1750_address = 0x5c; // i2c Addresse 3V3
-
-byte buff[2];
-
-//Create an instance of the object
+BH1750 lightMeter;
 HTU21D myHumidity;
  
 void setup() {
@@ -27,14 +25,10 @@ void setup() {
   // I2C SDA 4, SCL 5
   Wire.begin(sdaPin,sclPin);
 
-  Serial.println("Starting GY-30");
-
-  // GY-30 Modul initialisieren
-  BH1750_Init(BH1750_address);
+  Serial.println("Starting BH1750");
+  lightMeter.begin();
 
   Serial.println("Starting HTU21D");
-
-  // HTU21D init
   myHumidity.begin();
 
   configLeds();
@@ -88,13 +82,8 @@ void loop() {
 
   Serial.println();
   
-  float lx = BH1750_ReadLX(BH1750_address);
-  if(lx < 0) {
-    Serial.print("> 65535");
-  }
-  else {
-    Serial.print((int)lx,DEC); 
-  }
+  uint16_t lux = lightMeter.readLightLevel();
+  Serial.print(lux); 
   Serial.println(" lx"); 
 
   Serial.print("connecting to ");
@@ -111,7 +100,7 @@ void loop() {
   }
 
   char str[50];
-  sprintf(str, "%d", (int)lx);
+  sprintf(str, "%d", (int)lux);
   
   String lxString = str;
   String uri = "/write?db=" + db;
@@ -145,37 +134,6 @@ void loop() {
   greenOff();
 
   delay(delayMillis);
-}
-
-void BH1750_Init(int address){
-  
-  Wire.beginTransmission(address);
-  Wire.write(0x10); // 1 [lux] aufloesung
-  Wire.endTransmission();
-}
-
-byte BH1750_Read(int address){
-  
-  byte i=0;
-  Wire.beginTransmission(address);
-  Wire.requestFrom(address, 2);
-  while(Wire.available()){
-    buff[i] = Wire.read(); 
-    i++;
-  }
-  Wire.endTransmission();  
-  return i;
-}
-
-float BH1750_ReadLX(int address)
-{
-  float valf=0;
-  if(BH1750_Read(address)==2) {
-    valf=((buff[0]<<8)|buff[1])/1.2;
-    return valf;
-  }
-
-  return 0;
 }
 
 void configLeds()
