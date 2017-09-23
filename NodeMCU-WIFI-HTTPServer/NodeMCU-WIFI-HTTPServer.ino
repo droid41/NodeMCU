@@ -1,5 +1,13 @@
 #include <ESP8266WiFi.h>
 #include <Wire.h>
+
+/**
+ * Connects to WLAN and provides a minimalistic webserver to switch led on/off.
+ *  
+ * LED is connected on GPIO0 (D3).
+ * 
+ * Connect info is printed via Serial.
+ */
  
 const char* ssid = "<ssid>";
 const char* password = "<password>";
