@@ -2,12 +2,23 @@
 #include <Wire.h>
 #include "config.h"
 
+//https://github.com/claws/BH1750
+#include <BH1750.h>
+
+/**
+ * Connects to WLAN (see config.h) and provides a minimalistic webserver to switch led on/off and read BH1750 sensor value.
+ *  
+ * BH1750 is connected via I2C on SDA GPIO4 (D2) / SCL GPIO5 (D1).
+ * LED is connected on GPIO0 (D3).
+ * 
+ * Connect info is printed via Serial.
+ */
+
 int ledPin = 3; // GPIO0
 int sdaPin = 4;
 int sclPin = 5;
 
-int BH1750_address = 0x23; // i2c Addresse
-byte buff[2];
+BH1750 lightMeter;
 
 WiFiServer server(80);
  
@@ -19,8 +30,8 @@ void setup() {
   // I2C SDA 4, SCL 5
   Wire.begin(sdaPin,sclPin);
 
-  // GY-30 Modul initialisieren
-  BH1750_Init(BH1750_address);
+  Serial.println("Starting BH1750");
+  lightMeter.begin();
 
   // On-Board-LED
   pinMode(ledPin, OUTPUT);
@@ -83,20 +94,10 @@ void loop() {
     value = LOW;
   }
  
-// Set ledPin according to the request
-//digitalWrite(ledPin, value);
-
-
-  float lx = BH1750_ReadLX(BH1750_address);
-  if(lx < 0) {
-    Serial.print("> 65535");
-  }
-  else {
-    Serial.print((int)lx,DEC); 
-  }
+  uint16_t lux = lightMeter.readLightLevel();
+  Serial.print(lux); 
   Serial.println(" lx"); 
-    
- 
+  
   // Return the response
   client.println("HTTP/1.1 200 OK");
   client.println("Content-Type: text/html");
@@ -114,6 +115,10 @@ void loop() {
   client.println("<br><br>");
   client.println("<a href=\"/LED=ON\"\"><button>Turn On </button></a>");
   client.println("<a href=\"/LED=OFF\"\"><button>Turn Off </button></a><br />");  
+
+  client.print("LightMeter lx ");
+  client.println(lux);
+  
   client.println("</html>");
  
   delay(1);
@@ -121,34 +126,3 @@ void loop() {
   Serial.println("");
 }
 
-void BH1750_Init(int address){
-  
-  Wire.beginTransmission(address);
-  Wire.write(0x10); // 1 [lux] aufloesung
-  Wire.endTransmission();
-}
-
-byte BH1750_Read(int address){
-  
-  byte i=0;
-  Wire.beginTransmission(address);
-  Wire.requestFrom(address, 2);
-  while(Wire.available()){
-    buff[i] = Wire.read(); 
-    i++;
-  }
-  Wire.endTransmission();  
-  return i;
-}
-
-float BH1750_ReadLX(int address)
-{
-  float valf=0;
-  if(BH1750_Read(address)==2) {
-    valf=((buff[0]<<8)|buff[1])/1.2;
-    return valf;
-  }
-
-  return 0;
-}
- 
