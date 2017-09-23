@@ -3,6 +3,18 @@
 #include "config.h"
 #include "SparkFunHTU21D.h"
 
+//https://github.com/claws/BH1750
+#include <BH1750.h>
+
+/**
+ * Connects to WLAN (see config.h)and periodically reads BH1750/HTU21D sensor values and transmits it to api.thethings.io.
+ *  
+ * BH1750 / HTU21D are connected via I2C on SDA GPIO4 (D2) / SCL GPIO5 (D1).
+ * Status LEDs: green GPIO14 (D5), red GPIO12 (D6).
+ */
+
+const int WAIT_TIME = 5000;
+
 int sdaPin = 4;
 int sclPin = 5;
 
@@ -12,12 +24,7 @@ int ledRedPin = 12;
 char host[] = "api.thethings.io";
 int httpPort = 80;
 
-int BH1750_address = 0x23; // i2c Addresse GND
-//int BH1750_address = 0x5c; // i2c Addresse 3V3
-
-byte buff[2];
-
-//Create an instance of the object
+BH1750 lightMeter;
 HTU21D myHumidity;
  
 void setup() {
@@ -30,10 +37,8 @@ void setup() {
   // I2C SDA 4, SCL 5
   Wire.begin(sdaPin,sclPin);
 
-  Serial.println("Starting GY-30");
-
-  // GY-30 Modul initialisieren
-  BH1750_Init(BH1750_address);
+  Serial.println("Starting BH1750");
+  lightMeter.begin();
 
   Serial.println("Starting HTU21D");
 
@@ -90,13 +95,8 @@ void loop() {
 
   Serial.println();
   
-  float lx = BH1750_ReadLX(BH1750_address);
-  if(lx < 0) {
-    Serial.print("> 65535");
-  }
-  else {
-    Serial.print((int)lx,DEC); 
-  }
+  uint16_t lux = lightMeter.readLightLevel();
+  Serial.print(lux); 
   Serial.println(" lx"); 
 
   Serial.print("connecting to ");
@@ -113,9 +113,9 @@ void loop() {
   }
 
   char str[50];
-  sprintf(str, "%d", (int)lx);
-  
+  sprintf(str, "%d", (int) lux);
   String lxString = str;
+  
   String uri = "/v2/things/" + apiKey;
   String data = "{ \"values\": [ { \"key\": \"lxval\", \"value\": " + lxString + " },"
     + "{ \"key\": \"humval\", \"value\": " + humd + " },"
@@ -146,41 +146,7 @@ void loop() {
   greenOff();
 
   // 5 Sek. for test
-  delay(5000);
-
-  // 5 Minutes for production
-  // delay(1000 * 60 * 5);
-}
-
-void BH1750_Init(int address){
-  
-  Wire.beginTransmission(address);
-  Wire.write(0x10); // 1 [lux] aufloesung
-  Wire.endTransmission();
-}
-
-byte BH1750_Read(int address){
-  
-  byte i=0;
-  Wire.beginTransmission(address);
-  Wire.requestFrom(address, 2);
-  while(Wire.available()){
-    buff[i] = Wire.read(); 
-    i++;
-  }
-  Wire.endTransmission();  
-  return i;
-}
-
-float BH1750_ReadLX(int address)
-{
-  float valf=0;
-  if(BH1750_Read(address)==2) {
-    valf=((buff[0]<<8)|buff[1])/1.2;
-    return valf;
-  }
-
-  return 0;
+  delay(WAIT_TIME);
 }
 
 void configLeds()

@@ -6,6 +6,14 @@
 //https://github.com/claws/BH1750
 #include <BH1750.h>
 
+/**
+ * Connects to WLAN (see config.h)a nd periodically reads BH1750/HTU21D sensor values and transmits it to
+ * the specified influxdb-instance and database.
+ *  
+ * BH1750 / HTU21D are connected via I2C on SDA GPIO4 (D2) / SCL GPIO5 (D1).
+ * Status LEDs: green GPIO14 (D5), red GPIO12 (D6).
+ */
+
 int sdaPin = 4;
 int sclPin = 5;
 

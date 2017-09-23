@@ -1,5 +1,4 @@
 #include <ESP8266WiFi.h>
-#include <Wire.h>
 
 /**
  * Connects to WLAN and provides a minimalistic webserver to switch led on/off.
